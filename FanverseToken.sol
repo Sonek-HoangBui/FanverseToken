@@ -202,6 +202,11 @@ contract Pausable is AdminRole {
         _paused = true;
         emit Paused(msg.sender);
     }
+
+    function unPause() public onlyAdmin whenPaused {
+        _paused = false;
+        emit Unpaused(msg.sender);
+    }
 }
 
 interface IERC20 {
@@ -466,8 +471,6 @@ contract FanverseToken is ERC20Detailed, ERC20Pausable, ERC20Burnable {
         uint256 _releaseTime;
         uint256 _amount;
     }
-    
-    address public implementation;
 
     mapping (address => LockInfo[]) public timelockList;
     mapping (address => bool) public frozenAccount;
@@ -483,8 +486,7 @@ contract FanverseToken is ERC20Detailed, ERC20Pausable, ERC20Burnable {
     }
     
     constructor() ERC20Detailed("Fanverse Token", "FT", 18) public  {
-        
-        _mint(msg.sender, 1000000000 * (10 ** 18));
+        _mint(msg.sender, 1_000_000_000 * (10 ** 18));
     }
     
     function balanceOf(address owner) public view returns (uint256) {
@@ -499,7 +501,7 @@ contract FanverseToken is ERC20Detailed, ERC20Pausable, ERC20Burnable {
         return totalBalance;
     }
     
-    function transfer(address to, uint256 value) public notFrozen(msg.sender) returns (bool) {
+    function transfer(address to, uint256 value) public notFrozen(msg.sender) notFrozen(to) returns (bool) {
         if (timelockList[msg.sender].length > 0 ) {
             _autoUnlock(msg.sender);            
         }
@@ -547,6 +549,7 @@ contract FanverseToken is ERC20Detailed, ERC20Pausable, ERC20Burnable {
     }
 
     function _lock(address holder, uint256 value, uint256 releaseTime) internal returns(bool) {
+        require(releaseTime > block.timestamp, "Release time invalid");
         _balances[holder] = _balances[holder].sub(value);
         timelockList[holder].push( LockInfo(releaseTime, value) );
         
